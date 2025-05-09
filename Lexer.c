@@ -23,12 +23,23 @@ typedef struct {
     char lexeme[100];
 } Token;
 
+// Tabla de símbolos para análisis semántico
+typedef struct {
+    char nombre[100];
+    char tipo[20];
+} Simbolo;
+
+Simbolo tablaSimbolos[100];
+int contadorSimbolos = 0;
+
 // Prototipos de funciones
 int isKeyword(const char* str);
 void lexer(const char* code, Token* tokens, int* numTokens);
 void parser(Token* tokens, int numTokens);
+void agregarSimbolo(const char* nombre, const char* tipo);
+int verificarSimbolo(const char* nombre);
 
-// Funci%cn principal
+// Función principal
 int main() {
     const char* code = "void main(){\n   int a,b,c;\n   a = 1;\n   b=2;\n   c=a+b;\n }";
     Token tokens[100];
@@ -40,7 +51,7 @@ int main() {
     return 0;
 }
 
-// Verificaci%cn de palabras clave
+// Verificación de palabras clave
 int isKeyword(const char* str) {
     const char* keywords[] = {"void", "main", "int", "return"};
     int numKeywords = sizeof(keywords) / sizeof(keywords[0]);
@@ -123,10 +134,38 @@ void lexer(const char* code, Token* tokens, int* numTokens) {
         tokens[(*numTokens)++].lexeme[1] = '\0';
         i++;
     }
-
 }
 
-// Funciones del parser
+// Funciones para análisis semántico
+void agregarSimbolo(const char* nombre, const char* tipo) {
+    // Verificar duplicados
+    for(int i = 0; i < contadorSimbolos; i++) {
+        if(strcmp(tablaSimbolos[i].nombre, nombre) == 0) {
+            printf("\nError sem%cntico: Variable '%s' ya declarada\n", a, nombre);
+            return;
+        }
+    }
+    
+    if(contadorSimbolos < 100) {
+        strcpy(tablaSimbolos[contadorSimbolos].nombre, nombre);
+        strcpy(tablaSimbolos[contadorSimbolos].tipo, tipo);
+        contadorSimbolos++;
+    } else {
+        printf("\nError sem%cntico: Tabla de símbolos llena\n", a);
+    }
+}
+
+int verificarSimbolo(const char* nombre) {
+    for(int i = 0; i < contadorSimbolos; i++) {
+        if(strcmp(tablaSimbolos[i].nombre, nombre) == 0) {
+            return 1;
+        }
+    }
+    printf("\nError sem%cntico: Variable '%s' no declarada\n", a, nombre);
+    return 0;
+}
+
+// Funciones del parser modificadas con análisis semántico
 void parseFactor(Token* tokens, int numTokens, int* pos);
 void parseTerm(Token* tokens, int numTokens, int* pos);
 void parseExpression(Token* tokens, int numTokens, int* pos);
@@ -137,7 +176,12 @@ void parseFactor(Token* tokens, int numTokens, int* pos) {
         return;
     }
     
-    if(tokens[*pos].type == TOKEN_IDENTIFIER || tokens[*pos].type == TOKEN_NUMBER) {
+    if(tokens[*pos].type == TOKEN_IDENTIFIER) {
+        if(verificarSimbolo(tokens[*pos].lexeme)) {
+            printf("Procesando factor: %s\n", tokens[*pos].lexeme);
+        }
+        (*pos)++;
+    } else if(tokens[*pos].type == TOKEN_NUMBER) {
         printf("Procesando factor: %s\n", tokens[*pos].lexeme);
         (*pos)++;
     } else if(tokens[*pos].type == TOKEN_SYMBOL && strcmp(tokens[*pos].lexeme, "(") == 0) {
@@ -182,6 +226,11 @@ void parseAssignment(Token* tokens, int numTokens, int* pos) {
         printf("Error: Identificador esperado\n");
         return;
     }
+    
+    if(!verificarSimbolo(tokens[*pos].lexeme)) {
+        printf("Error: Asignación a variable no declarada '%s'\n", tokens[*pos].lexeme);
+    }
+    
     printf("Asignando a: %s\n", tokens[*pos].lexeme);
     (*pos)++;
     
@@ -213,17 +262,15 @@ void parseDeclarations(Token* tokens, int numTokens, int* pos) {
         printf("Error: Identificador esperado\n");
         return;
     }
-    printf("Procesando declaraci%cn de identificador: %s\n",o, tokens[*pos].lexeme);
-    (*pos)++;
     
-    while(*pos < numTokens && strcmp(tokens[*pos].lexeme, ",") == 0) {
-        printf("Procesando coma: %s\n", tokens[*pos].lexeme);
-        (*pos)++;
-        if(*pos >= numTokens || tokens[*pos].type != TOKEN_IDENTIFIER) {
-            printf("Error: Identificador esperado\n");
-            return;
-        }
+    while(1) {
         printf("Procesando declaraci%cn de identificador: %s\n",o, tokens[*pos].lexeme);
+        agregarSimbolo(tokens[*pos].lexeme, "int");
+        (*pos)++;
+        
+        if(*pos >= numTokens || strcmp(tokens[*pos].lexeme, ",") != 0) break;
+        
+        printf("Procesando coma: %s\n", tokens[*pos].lexeme);
         (*pos)++;
     }
     
@@ -285,6 +332,8 @@ void parser(Token* tokens, int numTokens) {
         return;
     }
     
-    printf("An%clisis sint%cctico completado exitosamente!\n",160,160);
+    printf("\n=========== An%clisis sem%cntico ===========\n", a, a);
+    printf("No se encontraron errores sem%canticos\n", a);
+    printf("An%clisis completado exitosamente!\n",160);
     printf("\n==========================================\n");
 }
